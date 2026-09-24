@@ -192,6 +192,12 @@ select, input{
   background:rgba(255,255,255,.15); border:none; color:#fff; padding:8px 14px; border-radius:20px;
   font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;
 }
+.lightbox-share{
+  position:absolute; top:calc(14px + env(safe-area-inset-top,0px)); right:14px; z-index:2;
+  background:rgba(255,255,255,.15); border:none; color:#fff; width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.lightbox-share.enviando{ opacity:.5; pointer-events:none; }
 .lightbox img{ max-width:100%; max-height:82vh; object-fit:contain; touch-action:pan-y; }
 .lightbox .hero-dots{ margin-top:16px; margin-bottom:0; }
 .lightbox .hero-dots .dot{ background:rgba(255,255,255,.35); }
@@ -226,6 +232,9 @@ select, input{
   <button class="lightbox-back" id="lightboxBack">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     Voltar
+  </button>
+  <button class="lightbox-share" id="lightboxShare" aria-label="Compartilhar foto">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
   </button>
   <img id="lightboxImg" src="" alt="">
   <div class="hero-dots" id="lightboxDots"></div>
@@ -778,6 +787,38 @@ function renderLightbox(){
   }).join('') : '';
 }
 document.getElementById('lightboxBack').onclick = fecharLightbox;
+
+/* Baixa a foto atual e abre o menu de compartilhamento nativo do celular
+   já com o ARQUIVO da imagem (não o link) — assim, ao escolher WhatsApp
+   por exemplo, vai a foto de verdade, igual quando se compartilha uma
+   foto salva na galeria. */
+document.getElementById('lightboxShare').onclick = async function(){
+  var btn = this;
+  var url = lightbox.fotos[lightbox.idx];
+  if(!url) return;
+  btn.classList.add('enviando');
+  try{
+    var resp = await fetch(url, { mode:'cors' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var blob = await resp.blob();
+    var arquivo = new File([blob], 'foto.jpg', { type: blob.type || 'image/jpeg' });
+    if(navigator.canShare && navigator.canShare({ files:[arquivo] })){
+      await navigator.share({ files:[arquivo] });
+    } else if(navigator.share){
+      await navigator.share({ url: url });
+      toast('Seu navegador só permite compartilhar o link, não o arquivo da foto');
+    } else {
+      throw new Error('sem suporte a compartilhamento');
+    }
+  }catch(e){
+    if(e && e.name !== 'AbortError'){
+      toast('Não foi possível preparar a foto para compartilhar. Toque e segure a imagem para salvá-la, e compartilhe pela galeria.');
+    }
+  }finally{
+    btn.classList.remove('enviando');
+  }
+};
+
 attachSwipe(document.getElementById('lightbox'),
   function(){ if(lightbox.fotos.length<2) return; lightbox.idx = (lightbox.idx+1) % lightbox.fotos.length; renderLightbox(); },
   function(){ if(lightbox.fotos.length<2) return; lightbox.idx = (lightbox.idx-1+lightbox.fotos.length) % lightbox.fotos.length; renderLightbox(); }
