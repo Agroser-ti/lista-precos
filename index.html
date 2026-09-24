@@ -78,12 +78,15 @@ select, input{
 .row:active{ background:var(--bg); }
 .row .icon-circle{
   width:46px; height:46px; border-radius:50%; background:var(--bg); border:1px solid var(--border);
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;
 }
 .row .icon-circle svg{ width:26px; height:26px; }
+.row .icon-circle img{ width:60%; height:60%; object-fit:contain; display:block; }
 .row .label{ font-size:15px; font-weight:600; flex:1; }
 .row .count{ font-size:12px; color:var(--sub); background:var(--bg); padding:3px 8px; border-radius:20px; }
 .row .chev{ color:var(--sub); }
+
+.logo-empresa{ display:block; max-height:56px; max-width:70%; object-fit:contain; margin:20px auto 4px; }
 
 /* ITEM LIST */
 .item{ display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--card); cursor:pointer; }
@@ -329,11 +332,14 @@ function arquivoParaJpegBase64(file, ladoMax){
   });
 }
 
-/* Categorias do menu inicial — os ids batem com o nome das abas da planilha */
+/* Categorias do menu inicial — os ids batem com o nome das abas da planilha.
+   "icon" é o ícone padrão desenhado (usado como reserva). "imagem" é o
+   arquivo que você pode subir no GitHub para substituir esse ícone — se
+   o arquivo não existir, o ícone padrão continua aparecendo normalmente. */
 var CATEGORIAS_MENU = [
-  { id:'NOVOS', label:'Novos', icon:'tag' },
-  { id:'USADOS', label:'Usados', icon:'tractor' },
-  { id:'AFS', label:'AFS', icon:'satellite' }
+  { id:'NOVOS', label:'Novos', icon:'tag', imagem:'icon-novos.png' },
+  { id:'USADOS', label:'Usados', icon:'tractor', imagem:'icon-usados.png' },
+  { id:'AFS', label:'AFS', icon:'satellite', imagem:'icon-afs.png' }
 ];
 
 var ICONS = {
@@ -350,6 +356,7 @@ var ICONS = {
 var MAX_FOTOS = 10; // precisa bater com o nº de colunas "Imagem N" que você mantém na planilha
 function icon(name, size){ size = size || 24; return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[name]||ICONS.box)+'</svg>'; }
 function onImgError(el, size){ el.outerHTML = icon('box', size); }
+function onCategoriaImgError(el, nomeIcone){ el.outerHTML = icon(nomeIcone, 24); }
 function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
 
 /* Detecta um "swipe" horizontal de dedo e chama onLeft (próxima) ou onRight (anterior) */
@@ -509,9 +516,12 @@ function renderHome(){
   var counts = { NOVOS:0, USADOS:0, AFS:0 };
   (state.produtos||[]).forEach(function(p){ if(counts[p.tipo]!==undefined) counts[p.tipo]++; });
   var rows = CATEGORIAS_MENU.map(function(c){
+    var conteudoIcone = c.imagem
+      ? '<img src="'+c.imagem+'" alt="" onerror="onCategoriaImgError(this,\''+c.icon+'\')">'
+      : icon(c.icon,24);
     return '' +
     '<div class="row" data-tipo="'+c.id+'">' +
-      '<div class="icon-circle">'+icon(c.icon,24)+'</div>' +
+      '<div class="icon-circle">'+conteudoIcone+'</div>' +
       '<div class="label">'+c.label+'</div>' +
       '<div class="count">'+counts[c.id]+'</div>' +
       '<div class="chev">'+icon('chev',18)+'</div>' +
@@ -519,6 +529,7 @@ function renderHome(){
   }).join('');
   var erro = state.erro ? '<div class="error-box">'+state.erro+'</div>' : '';
   return '' +
+    '<img id="logoEmpresa" class="logo-empresa" src="logo.png" alt="" onerror="this.style.display=\'none\'">' +
     '<div class="subbar">' +
       '<h2>Início</h2>' +
       '<div class="sync-status">'+fmtSync(state.lastSync)+'</div>' +
